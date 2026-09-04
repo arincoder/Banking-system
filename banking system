@@ -1,0 +1,506 @@
+import os
+import json
+class Bank:
+  def __init__(self):
+    self.customers = []
+    self.accounts = []
+
+  def to_dict(self):
+    return {
+        "customers": [customer.to_dict() for customer in self.customers],
+        "accounts": [account.to_dict() for account in self.accounts]
+    }
+
+  @classmethod
+  def from_dict(cls, data):
+    bank = cls()
+    bank.customers = [
+        Customer.from_dict(customer) for customer in data["customers"]
+    ]
+    bank.accounts = [
+        BankAccount.from_dict(account) for account in data["accounts"]
+    ]
+    return bank
+
+  def save_data(self):
+    with open("bank.json", "w") as file:
+      json.dump(self.to_dict(), file, indent = 4)
+
+  def load_data(self):
+    if not os.path.exists("bank.json"):
+      return
+
+    with open("bank.json", "r") as file:
+      data = json.load(file)
+
+    self.customers =[
+         Customer.from_dict(customer) for customer in data["customers"]
+    ]
+
+    self.accounts = [
+        BankAccount.from_dict(account) for account in data["accounts"]
+    ]
+
+
+  def display_customer(self, customer):
+    print(f"\nCustomer ID: {customer.id}")
+    print(f"Customer Name: {customer.name}")
+
+  def display_account(self, account):
+    print(f"\nAccount number : {account.account_number}")
+    print(f"Owner : {account.owner}")
+    print(f"Balance: ${account.get_balance():,.2f}")
+
+  def create_customer(self):
+    print("\n-------CREATE CUSTOMER------\n")
+
+    new_customer_name = input("Enter customer name: ").title()
+    for customer in self.customers:
+
+      if new_customer_name.lower() == customer.name.lower():
+        print("Customer already in records")
+        return
+
+    new_customer_id = len(self.customers) + 1
+
+    new_customer = Customer(new_customer_id, new_customer_name)
+    self.customers.append(new_customer)
+
+    print("\nCustomer created successfully!")
+    self.display_customer(new_customer)
+
+    print("\n----------------------------\n")
+
+
+
+
+  def create_bank_account(self):
+    print("\n-------CREATE BANK ACCOUNT------\n")
+
+    new_owner = input("Enter your name: ").title()
+
+    try:
+      initial_deposit = float(input("Enter your initial deposit: "))
+      if initial_deposit <= 0:
+        print("Amount must be more than zero")
+        return
+
+    except ValueError:
+      print("Amount must be in figures")
+
+      return
+
+    for account in self.accounts:
+
+      if new_owner.lower() == account.owner.lower():
+        print("Account already in records")
+        return
+
+    new_account_number = len(self.accounts) + 1
+    new_account = BankAccount(new_account_number, new_owner, initial_deposit)
+
+    self.accounts.append(new_account)
+    print("Account created successfully")
+
+    self.display_account(new_account)
+    print("\n----------------------------\n")
+
+  def deposit_money(self):
+    print("\n-------DEPOSIT MONEY------\n")
+
+    try:
+      account_num = int(input("Enter account number: "))
+    except ValueError:
+        print("Enter a number")
+        return
+
+    try:
+      depo_amount = float(input("Enter amount to deposit: "))
+      if depo_amount <= 0:
+        print("Deposit money must be greater than zero")
+        return
+
+    except ValueError:
+      print("Enter amount in figures")
+      return
+
+
+    for account in self.accounts:
+      if account_num == account.account_number:
+
+
+         previous_balance = account.get_balance()
+         account.deposit(depo_amount)
+         new_balance = account.get_balance()
+
+         print(f"\nAccount number: {account_num}")
+         print(f"Owner: {account.owner}")
+         print(f"Previous balance: ${previous_balance:,.2f}")
+         print(f"Deposit amount: ${depo_amount:,.2f}")
+         print(f"New balance: ${new_balance:,.2f}")
+         print("Deposit successful")
+         return
+    print("Account not found")
+    print("\n----------------------------\n")
+
+  def withdraw_money(self):
+    print("\n-------WITHDRAW MONEY------\n")
+
+    try:
+      account_num = int(input("Enter account number: "))
+    except ValueError:
+      print("Account number must be figures")
+      return
+
+    for account in self.accounts:
+      if account_num == account.account_number:
+        try:
+          withdraw_amount = float(input("Enter amount to withdraw: "))
+        except ValueError:
+          print("Amount must be numbers")
+          return
+
+        previous_balance = account.get_balance()
+        success = account.withdraw(withdraw_amount)
+
+        if success:
+          new_balance = account.get_balance()
+
+          print("\nWithdrawal successful!")
+          print(f"Previous balance: ${previous_balance:,.2f}")
+          print(f"Amount withdrawn: ${withdraw_amount:,.2f}")
+          print(f"Remaining balance: ${new_balance:,.2f}")
+        return
+
+
+    print("Account not found")
+    print("\n----------------------------\n")
+
+
+
+  def transfer_money(self):
+    print("\n-------TRANSFER MONEY------\n")
+
+    try:
+      sender = int(input("Enter sender account number: "))
+    except ValueError:
+        print("Enter a number")
+        return
+    try:
+      receiver = int(input("Enter receiver account number: "))
+    except ValueError:
+        print("Enter a number")
+        return
+
+    try:
+      transfer_amount = float(input("Enter amount to transfer: "))
+      if transfer_amount <= 0:
+        print("Amount must be greater than zero")
+        return
+
+    except ValueError:
+      print("Enter amount in figures")
+      return
+
+
+    sender_account = None
+    receiver_account = None
+
+    for account in self.accounts:
+      if sender == account.account_number:
+        sender_account = account
+        sender_name = account.owner
+      if receiver == account.account_number:
+        receiver_account = account
+        receiver_name = account.owner
+
+    if sender_account is None:
+      print("Sender account not found")
+      return
+    if receiver_account is None:
+      print("Receiver account not found")
+      return
+
+    if sender_account == receiver_account:
+      print("Same account. Accounts have to be different")
+      return
+
+    sender_success = sender_account.transfer(transfer_amount, receiver_account)
+
+    if not sender_success:
+      return
+
+
+    sender_new_balance = sender_account.get_balance()
+    receiver_new_balance = receiver_account.get_balance()
+
+    print("\nTransfer successful!")
+    print(f"Sender: {sender_name}")
+    print(f"Receiver: {receiver_name}")
+    print(f"Amount transferred: ${transfer_amount:,.2f}")
+    print(f"{sender_name}'s new balance: ${sender_new_balance:,.2f}")
+    print(f"{receiver_name}'s new balance: ${receiver_new_balance:,.2f}")
+    print("\n----------------------------\n")
+
+
+
+  def check_balance(self):
+    print("\n-------CHECK BALANCE------\n")
+
+    try:
+      account_number = int(input("Enter account number: "))
+
+    except ValueError:
+      print("Account number must be in numbers. ")
+      return
+
+    for account in self.accounts:
+      if account_number == account.account_number:
+        print(f"Current balance: {account.get_balance():,.2f}")
+        return
+    print("Account not found")
+    print("\n----------------------------\n")
+
+
+  def account_details(self):
+    print("\n-------ACCOUNT DETAILS------\n")
+
+    try:
+      account_number = int(input("Enter account number: "))
+
+    except ValueError:
+      print("Account number must be in numbers. ")
+      return
+
+    for account in self.accounts:
+      if account_number == account.account_number:
+        self.display_account(account)
+        return
+    print("Account not found")
+    print("\n----------------------------\n")
+
+
+  def view_customers(self):
+    print("\n-------CUSTOMERS------\n")
+    for customer in self.customers:
+      self.display_customer(customer)
+      print("\n----------------------------\n")
+
+  def view_accounts(self):
+    print("\n-------ACCOUNTS------\n")
+    for account in self.accounts:
+      self.display_account(account)
+      print("\n----------------------------\n")
+
+  def transaction_history(self):
+    print("\n-------Transaction History------\n")
+
+    try:
+      account_number = int(input("Enter account number: "))
+
+    except ValueError:
+      print("Account number must be in numbers. ")
+      return
+
+    user_account = None
+    for account in self.accounts:
+      if account_number == account.account_number:
+        user_account = account
+
+
+    if user_account is None:
+      print("Account not found")
+      return
+
+    if not user_account.history:
+      print("No transaction found")
+      return
+
+    for transaction in user_account.history:
+      print(f"Type: {transaction['type']}")
+      print(f"Amount: ${transaction['amount']:,.2f}")
+
+      if "to" in transaction:
+        print(f"To Account: {transaction['to']} ")
+
+      if "from" in transaction:
+        print(f"From Account: {transaction['from']} ")
+
+      print(f"Balance: ${transaction['balance']:,.2f}")
+      print("\n----------------------------\n")
+
+
+
+class Customer:
+  def __init__(self, id, name):
+    self.id = id
+    self.name = name
+
+  def to_dict(self):
+    return {
+        "id": self.id,
+        "name": self.name
+    }
+
+  @classmethod
+  def from_dict(cls, data):
+    return cls(
+        data["id"],
+        data["name"]
+    )
+
+class BankAccount:
+  def __init__(self, account_number, owner, balance):
+    self.account_number = account_number
+    self.owner = owner
+    self.__balance = balance
+    self.history = []
+
+  def to_dict(self):
+    return {
+        "account number": self.account_number,
+        "owner": self.owner,
+        "balance": self.__balance,
+        "history": self.history
+    }
+
+  @classmethod
+  def from_dict(cls, data):
+    account = cls (
+        data["account number"],
+        data["owner"],
+        data["balance"]
+    )
+    account.history = data["history"]
+    return account
+
+  def get_balance(self):
+    return self.__balance
+
+  def deposit(self, amount):
+    if amount <= 0:
+      print("Amount to deposit must be more than zero")
+      return False
+    self.__balance += amount
+
+    transaction = {
+        "type": "Deposit",
+        "amount": amount,
+        "balance": self.__balance
+
+    }
+
+    self.history.append(transaction)
+    return True
+
+  def withdraw(self, amount):
+    if amount <= 0:
+      print("Amount to withdraw must be more than 0")
+      return False
+    elif amount > self.__balance:
+      print("Insufficient funds")
+      print(f"Current balance: ${self.get_balance():,.2f}")
+      return False
+
+    self.__balance -= amount
+
+    transaction = {
+        "type": "Withdrawal",
+        "amount": amount,
+        "balance": self.__balance
+
+    }
+
+    self.history.append(transaction)
+    return True
+
+
+  def transfer(self, amount, recipient):
+    if amount <= 0:
+        print("Amount must be greater than zero")
+        return False
+
+    if amount > self.__balance:
+        print("Insufficient funds")
+        return False
+
+    self.__balance -= amount
+    recipient.__balance += amount
+
+    sender_transaction = {
+        "type": "Transfer",
+        "amount": amount,
+        "to": recipient.account_number,
+        "balance": self.__balance
+    }
+
+    receiver_transaction = {
+        "type": "Transfer",
+        "amount": amount,
+        "from": self.account_number,
+        "balance": recipient.__balance
+    }
+
+    self.history.append(sender_transaction)
+    recipient.history.append(receiver_transaction)
+
+    return True
+
+
+def main_menu():
+  bank.load_data()
+  while True:
+    print("=======================================")
+    print("           BANKING SYSTEM")
+    print("=======================================")
+    print("\n1. Create Customer")
+    print("2. Create Bank Account")
+    print("3. Deposit Money")
+    print("4. Withdraw Money")
+    print("5. Transfer Money")
+    print("6. Check Balance")
+    print("7. View Account Details")
+    print("8. View Transaction History")
+    print("9. View Customers")
+    print("10. View Accounts")
+    print("11. Exit\n")
+    print("=======================================")
+
+    try:
+      choice = int(input("Enter your choice: "))
+      if choice < 1 or choice > 11:
+        print("Choice must be between 1 and 11")
+        continue
+    except ValueError:
+      print("Choice must be numbers")
+      continue
+
+    if choice == 1:
+      bank.create_customer()
+    elif choice == 2:
+      bank.create_bank_account()
+    elif choice == 3:
+      bank.deposit_money()
+    elif choice == 4:
+      bank.withdraw_money()
+    elif choice == 5:
+      bank.transfer_money()
+    elif choice == 6:
+      bank.check_balance()
+    elif choice == 7:
+      bank.account_details()
+    elif choice == 8:
+      bank.transaction_history()
+    elif choice == 9:
+      bank.view_customers()
+    elif choice == 10:
+      bank.view_accounts()
+    elif choice == 11:
+      print("Program exited")
+      break
+
+    bank.save_data()
+
+
+bank = Bank()
+main_menu()
